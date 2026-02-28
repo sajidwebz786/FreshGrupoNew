@@ -1,6 +1,23 @@
-pluginManagement { includeBuild("../node_modules/@react-native/gradle-plugin") }
+pluginManagement {
+  includeBuild("../node_modules/@react-native/gradle-plugin")
+  repositories {
+    mavenCentral()
+    google()
+    gradlePluginPortal()
+  }
+  plugins {
+    // Override the Foojay plugin version to fix IBM_SEMERU compatibility with Gradle 9.0.0
+    id("org.gradle.toolchains.foojay-resolver-convention").version("0.8.0")
+  }
+}
+
 plugins { id("com.facebook.react.settings") }
+
 extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autolinkLibrariesFromCommand() }
 rootProject.name = 'FreshGrupoNew'
 include ':app'
 includeBuild('../node_modules/@react-native/gradle-plugin')
+
+
+
+
