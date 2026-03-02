@@ -5,7 +5,7 @@
  * - Or set process.env.API_BASE_URL to override (useful for ngrok HTTPS URL)
  */
 
-const DEFAULT_HOST = 'http://192.168.1.8:3001'; // Local development
+const DEFAULT_HOST = 'https://freshgrupo-server.onrender.com'; // Local development
 //const DEFAULT_HOST = 'http://localhost:3001'; // Local development
 //const DEFAULT_HOST = 'https://freshgrupo-server.onrender.com'; // Production Render server
 const API_BASE_URL = (typeof process !== 'undefined' && process.env && process.env.API_BASE_URL)
