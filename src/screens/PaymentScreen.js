@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, CommonActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RazorpayCheckout from 'react-native-razorpay';
 import CustomHeader from '../components/CustomHeader';
 import BottomNavigation from '../components/BottomNavigation';
 
@@ -173,9 +174,160 @@ const PaymentScreen = () => {
   /* =========================
       RAZORPAY PAYMENT
    ========================= */
-  const handlePayment = () => {
-     Alert.alert('Coming Soon', 'Online payment will be available soon. Please use Cash on Delivery for now.');
-   };
+  const handleRazorpayPayment = async () => {
+      try {
+        setProcessing(true);
+
+      const userData = await AsyncStorage.getItem('userData');
+      const currentUser = userData ? JSON.parse(userData) : null;
+      const token = await AsyncStorage.getItem('userToken');
+
+      if (!currentUser?.id) {
+        Alert.alert('Error', 'User not logged in');
+        return;
+      }
+
+      // Create order with Razorpay payment method - server will create razorpay order
+      const orderPayload = {
+        userId: currentUser.id,
+        quantity: cartItems.reduce((s, i) => s + i.quantity, 0),
+        deliveryAddress,
+        paymentMethod: 'razorpay',
+        totalAmount: finalAmount,
+        packId: cartItems[0]?.packId,
+        isCustom: cartItems[0]?.isCustom || false,
+        customPackName: cartItems[0]?.customPackName,
+        customPackItems: cartItems[0]?.customPackItems,
+        timeSlot,
+        deliveryDate: selectedDate.toISOString(),
+      };
+
+      // Create order on server - this will return razorpayOrderId if paymentMethod is razorpay
+      const orderRes = await fetch(
+        'https://freshgrupo-server.onrender.com/api/orders',
+        {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(orderPayload),
+        }
+      );
+
+      if (!orderRes.ok) {
+        const errorData = await orderRes.json();
+        throw new Error(errorData.error || 'Failed to create order');
+      }
+
+      const orderData = await orderRes.json();
+      
+      if (!orderData || !orderData.id) {
+        throw new Error('Failed to create order');
+      }
+
+      // First create Razorpay order to get the key
+      const razorpayOrderRes = await fetch(
+        'https://freshgrupo-server.onrender.com/api/orders/razorpay/create-order',
+        {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            packageId: cartItems[0]?.packId,
+            customer: {
+              name: currentUser?.name,
+              email: currentUser?.email,
+              phone: currentUser?.phone
+            }
+          }),
+        }
+      );
+
+      const razorpayOrderData = await razorpayOrderRes.json();
+      
+      if (!razorpayOrderRes.ok || !razorpayOrderData.razorpayOrderId) {
+        console.error('Razorpay order error:', razorpayOrderData);
+        throw new Error(razorpayOrderData.error || 'Failed to create Razorpay order');
+      }
+
+      // Open Razorpay payment gateway with the key from server
+      const razorpayKey = razorpayOrderData.key || razorpayOrderData.RAZORPAY_KEY_ID;
+      
+      const options = {
+        description: 'Payment for Fresh Grupo Order',
+        currency: 'INR',
+        key: razorpayKey,
+        amount: razorpayOrderData.amount,
+        name: 'Fresh Grupo',
+        prefill: {
+          email: currentUser?.email || '',
+          contact: currentUser?.phone || '',
+          name: currentUser?.name || '',
+        },
+        theme: { color: '#4CAF50' },
+      };
+
+      const paymentData = await RazorpayCheckout.open(options);
+
+      // Update payment status on server
+      const updatePaymentRes = await fetch(
+        `https://freshgrupo-server.onrender.com/api/orders/${orderData.id}/payment`,
+        {
+          method: 'PUT',
+          headers: { 
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}` 
+          },
+          body: JSON.stringify({
+            razorpayPaymentId: paymentData.razorpay_payment_id,
+            razorpayOrderId: paymentData.razorpay_order_id,
+            status: 'completed',
+          }),
+        }
+      );
+
+      if (!updatePaymentRes.ok) {
+        console.warn('Failed to update payment status on server');
+      }
+
+      // Clear cart
+      try {
+        const userData = await AsyncStorage.getItem('userData');
+        const currentUser = userData ? JSON.parse(userData) : null;
+        
+        if (currentUser?.id) {
+          const clearRes = await fetch(`https://freshgrupo-server.onrender.com/api/cart/clear/${currentUser.id}`, {
+            method: 'DELETE'
+          });
+          if (clearRes.ok) {
+            console.log('Cart cleared successfully');
+          }
+        }
+      } catch (err) {
+        console.error('Error clearing cart:', err);
+      }
+
+      Alert.alert('Success', 'Order placed successfully!');
+      navigation.dispatch(
+        CommonActions.reset({
+          index: 0,
+          routes: [{ name: 'Drawer' }],
+        })
+      );
+
+    } catch (err) {
+      console.error('Razorpay Payment Error:', err);
+      Alert.alert(
+        'Payment Error',
+        'Unable to process online payment. Please use Cash on Delivery or Wallet payment instead.'
+      );
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   /* =========================
      CASH ON DELIVERY
@@ -254,6 +406,13 @@ const PaymentScreen = () => {
     }
   };
 
+  /* =========================
+      ADD TO WALLET (via Razorpay)
+   ========================= */
+  const handleAddToWallet = async () => {
+    // Show a simple alert with TextInput workaround - just navigate to BuyCredits
+    navigation.navigate('BuyCredits');
+  };
 
   /* =========================
       UI
@@ -273,8 +432,8 @@ const PaymentScreen = () => {
           <Text style={styles.amount}>₹{totalAmount}</Text>
         </View>
 
-        {/* Wallet Section */}
-        {!loadingWallet && walletBalance > 0 && (
+        {/* Wallet Section - Always show */}
+        {!loadingWallet && (
           <View style={styles.walletBox}>
             <View style={styles.walletHeader}>
               <View style={styles.walletInfo}>
@@ -284,16 +443,18 @@ const PaymentScreen = () => {
                   <Text style={styles.walletBalance}>₹{walletBalance.toFixed(2)}</Text>
                 </View>
               </View>
-              <TouchableOpacity
-                style={[styles.walletToggle, useWallet && styles.walletToggleActive]}
-                onPress={() => setUseWallet(!useWallet)}
-              >
-                <Text style={[styles.walletToggleText, useWallet && styles.walletToggleTextActive]}>
-                  {useWallet ? 'Using' : 'Use'}
-                </Text>
-              </TouchableOpacity>
+              {walletBalance > 0 && (
+                <TouchableOpacity
+                  style={[styles.walletToggle, useWallet && styles.walletToggleActive]}
+                  onPress={() => setUseWallet(!useWallet)}
+                >
+                  <Text style={[styles.walletToggleText, useWallet && styles.walletToggleTextActive]}>
+                    {useWallet ? 'Using' : 'Use'}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
-            {useWallet && (
+            {walletBalance > 0 && useWallet && (
               <View style={styles.walletDiscount}>
                 <Text style={styles.walletDiscountText}>
                   Wallet Discount: -₹{walletDiscount.toFixed(2)}
@@ -303,6 +464,14 @@ const PaymentScreen = () => {
                 </Text>
               </View>
             )}
+            {/* Add to Wallet Button */}
+            <TouchableOpacity
+              style={styles.addWalletButton}
+              onPress={handleAddToWallet}
+            >
+              <Ionicons name="add-circle" size={20} color="#fff" />
+              <Text style={styles.addWalletText}>Add Money to Wallet</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -348,7 +517,7 @@ const PaymentScreen = () => {
 
         <TouchableOpacity
           style={[styles.payButton, processing && styles.disabled]}
-          onPress={handlePayment}
+          onPress={handleRazorpayPayment}
           disabled={processing}
         >
           <Text style={styles.payText}>
@@ -406,6 +575,8 @@ const styles = StyleSheet.create({
   walletDiscount: { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#eee' },
   walletDiscountText: { fontSize: 14, color: '#4CAF50', fontWeight: 'bold' },
   finalAmountText: { fontSize: 16, color: '#333', fontWeight: 'bold', marginTop: 4 },
+  addWalletButton: { backgroundColor: '#FF9800', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  addWalletText: { color: '#fff', fontSize: 14, fontWeight: 'bold', marginLeft: 8 },
   
   payButton: { backgroundColor: '#4CAF50', padding: 15, borderRadius: 10, marginBottom: 15 },
   walletPayButton: { backgroundColor: '#FF9800', padding: 15, borderRadius: 10, marginBottom: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },

@@ -38,7 +38,7 @@ const WalletScreen = () => {
       setLoading(true);
       
       // Get user from AsyncStorage
-      const userData = await AsyncStorage.getItem('user');
+      const userData = await AsyncStorage.getItem('userData');
       if (!userData) {
         Alert.alert('Error', 'Please login to view your wallet');
         return;
@@ -47,7 +47,7 @@ const WalletScreen = () => {
       const userObj = JSON.parse(userData);
       setUser(userObj);
       
-      const token = await AsyncStorage.getItem('token');
+      const token = await AsyncStorage.getItem('userToken');
       
       // Load wallet and credit packages in parallel
       const [walletRes, packagesRes] = await Promise.all([

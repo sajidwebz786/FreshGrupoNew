@@ -9,9 +9,12 @@ import {
   ImageBackground,
   ScrollView,
   Image,
+  StatusBar,
+  TextInput,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RazorpayCheckout from 'react-native-razorpay';
 import api from '../services/api';
 import CustomHeader from '../components/CustomHeader';
 
@@ -25,7 +28,9 @@ const BuyCreditsScreen = () => {
   const handlePurchase = async () => {
     try {
       setLoading(true);
-      const token = await AsyncStorage.getItem('token');
+      const userData = await AsyncStorage.getItem('userData');
+      const currentUser = userData ? JSON.parse(userData) : null;
+      const token = await AsyncStorage.getItem('userToken');
       
       let packageId = creditPackage?.id;
       let amount = creditPackage?.price;
@@ -46,43 +51,55 @@ const BuyCreditsScreen = () => {
         return;
       }
 
-      // Create Razorpay order
+      // Create Razorpay order on server
       const orderResponse = await api.createCreditOrder(packageId, amount, token);
       
-      Alert.alert(
-        'Payment Initiated',
-        `Please complete the payment of ₹${amount} using Razorpay. In production, this would open the Razorpay payment gateway.`,
-        [
-          {
-            text: 'Simulate Success',
-            onPress: async () => {
-              try {
-                // Simulate successful payment
-                const verifyResponse = await api.verifyCreditPayment(
-                  'simulated_payment_id',
-                  orderResponse.orderId,
-                  orderResponse.transactionId,
-                  token
-                );
-                
-                Alert.alert(
-                  'Success!',
-                  `🎉 ${verifyResponse.creditsAdded} credits have been added to your wallet!`,
-                  [{ text: 'OK', onPress: () => navigation.goBack() }]
-                );
-              } catch (error) {
-                console.error('Error verifying payment:', error);
-                Alert.alert('Error', 'Failed to verify payment');
-              }
-            },
-          },
-          {
-            text: 'Cancel',
-            style: 'cancel',
-            onPress: () => setLoading(false),
-          },
-        ]
-      );
+      if (!orderResponse || !orderResponse.orderId) {
+        Alert.alert('Error', 'Failed to create payment order');
+        setLoading(false);
+        return;
+      }
+
+      // Open Razorpay payment gateway
+      const options = {
+        description: `Purchase ${creditPackage?.credits || customAmount} credits`,
+        currency: 'INR',
+        key: orderResponse.razorpayKeyId, // Server should provide this
+        amount: Math.round(amount * 100), // Razorpay expects amount in paise
+        name: 'Fresh Grupo',
+        prefill: {
+          email: currentUser?.email || '',
+          contact: currentUser?.phone || '',
+          name: currentUser?.name || '',
+        },
+        theme: { color: '#4CAF50' },
+      };
+
+      try {
+        const paymentData = await RazorpayCheckout.open(options);
+        
+        // Payment successful - verify with server
+        const verifyResponse = await api.verifyCreditPayment(
+          paymentData.razorpay_payment_id,
+          orderResponse.orderId,
+          orderResponse.transactionId,
+          token
+        );
+        
+        Alert.alert(
+          'Success!',
+          `🎉 ${verifyResponse.creditsAdded} credits have been added to your wallet!`,
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } catch (razorpayError) {
+        // User cancelled or payment failed
+        if (razorpayError.code === 'USER_CANCELLED') {
+          Alert.alert('Payment Cancelled', 'You can try again when ready.');
+        } else {
+          console.error('Razorpay error:', razorpayError);
+          Alert.alert('Payment Failed', 'Please try again or use a different payment method.');
+        }
+      }
     } catch (error) {
       console.error('Error creating order:', error);
       Alert.alert('Error', 'Failed to create payment order');
@@ -242,8 +259,6 @@ const BuyCreditsScreen = () => {
     </View>
   );
 };
-
-import { StatusBar, TextInput } from 'react-native';
 
 const styles = StyleSheet.create({
   mainContainer: {

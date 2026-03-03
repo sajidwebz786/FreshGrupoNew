@@ -8,7 +8,7 @@ import CategoriesScreen from './src/screens/CategoriesScreen';
 import PackTypesScreen from './src/screens/PackTypesScreen';
 import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
-import FestivalWishesScreen from './src/screens/FestivalWishesScreen';
+
 import PackContentsScreen from './src/screens/PackContentsScreen';
 import CustomPackScreen from './src/screens/CustomPackScreen';
 import CartScreen from './src/screens/CartScreen';
@@ -147,11 +147,6 @@ export default function App() {
           <Stack.Screen
             name="Register"
             component={RegisterScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="FestivalWishes"
-            component={FestivalWishesScreen}
             options={{ headerShown: false }}
           />
           <Stack.Screen

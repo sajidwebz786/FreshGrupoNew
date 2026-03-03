@@ -115,7 +115,7 @@ const LoginScreen = () => {
       console.log('User role:', response.user?.role);
 
       Alert.alert('Success', isLogin ? 'Logged in successfully!' : 'Signed up successfully!');
-      navigation.navigate('FestivalWishes');
+      navigation.navigate('Drawer');
     } catch (error) {
       console.error('Auth error:', error);
       Alert.alert('Error', error.message || 'Authentication failed');
