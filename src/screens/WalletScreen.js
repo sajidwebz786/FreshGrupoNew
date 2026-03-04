@@ -10,6 +10,7 @@ import {
   ImageBackground,
   Image,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -39,28 +40,51 @@ const WalletScreen = () => {
       
       // Get user from AsyncStorage
       const userData = await AsyncStorage.getItem('userData');
-      if (!userData) {
-        Alert.alert('Error', 'Please login to view your wallet');
+      const token = await AsyncStorage.getItem('userToken');
+      
+      if (!userData || !token) {
+        console.warn('WalletScreen: User not authenticated');
+        Alert.alert(
+          'Session Expired',
+          'Your session has expired. Please log in again.',
+          [{ text: 'OK', onPress: () => navigation.replace('Login') }]
+        );
         return;
       }
       
       const userObj = JSON.parse(userData);
       setUser(userObj);
       
-      const token = await AsyncStorage.getItem('userToken');
-      
       // Load wallet and credit packages in parallel
-      const [walletRes, packagesRes] = await Promise.all([
-        api.getWallet(token),
-        api.getCreditPackages()
-      ]);
-      
-      setWallet(walletRes.wallet);
-      setTransactions(walletRes.transactions || []);
-      setCreditPackages(packagesRes || []);
+      try {
+        const [walletRes, packagesRes] = await Promise.all([
+          api.getWallet(token),
+          api.getCreditPackages()
+        ]);
+        
+        setWallet(walletRes.wallet);
+        setTransactions(walletRes.transactions || []);
+        setCreditPackages(packagesRes || []);
+      } catch (apiError) {
+        console.error('API Error loading wallet:', apiError);
+        
+        // Handle 401 Unauthorized - token is invalid
+        if (apiError.status === 401) {
+          console.warn('WalletScreen: Authentication failed (401)');
+          await AsyncStorage.multiRemove(['userData', 'userToken', 'loginTime', 'lastActivityTime']);
+          Alert.alert(
+            'Session Expired',
+            'Your session has expired. Please log in again.',
+            [{ text: 'OK', onPress: () => navigation.replace('Login') }]
+          );
+          return;
+        }
+        
+        throw apiError;
+      }
     } catch (error) {
       console.error('Error loading wallet:', error);
-      Alert.alert('Error', 'Failed to load wallet data');
+      Alert.alert('Error', error.message || 'Failed to load wallet data');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -305,8 +329,6 @@ const WalletScreen = () => {
     </View>
   );
 };
-
-import { StatusBar } from 'react-native';
 
 const styles = StyleSheet.create({
   mainContainer: {

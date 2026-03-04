@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -23,7 +23,7 @@ import CustomDrawer from './src/components/CustomDrawer';
 import { DrawerProvider, useDrawer } from './src/context/DrawerContext';
 import {enableScreens} from 'react-native-screens';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
 enableScreens(true);
@@ -34,12 +34,10 @@ const Stack = createNativeStackNavigator();
 function DrawerModal() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigation = useNavigation();
-  // Start from left (negative width means off-screen to the left)
-  const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (isDrawerOpen) {
-      // Slide in from left to position 0
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -47,7 +45,6 @@ function DrawerModal() {
         friction: 11,
       }).start();
     } else {
-      // Slide out to the left
       Animated.timing(slideAnim, {
         toValue: -DRAWER_WIDTH,
         duration: 200,
@@ -56,7 +53,7 @@ function DrawerModal() {
     }
   }, [isDrawerOpen, slideAnim]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
       if (isDrawerOpen) {
         closeDrawer();
@@ -104,6 +101,8 @@ function MainStackNavigator() {
         initialRouteName="Categories"
         screenOptions={{
           headerShown: false,
+          // Keep screens mounted to prevent disappearing
+          unmountOnBlur: false,
         }}
       >
         <Stack.Screen name="Categories" component={CategoriesScreen} />
@@ -125,40 +124,41 @@ function MainStackNavigator() {
   );
 }
 
-function AppContent() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Splash">
-        <Stack.Screen
-          name="Splash"
-          component={SplashScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Login"
-          component={LoginScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Register"
-          component={RegisterScreen}
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen
-          name="Drawer"
-          component={MainStackNavigator}
-          options={{ headerShown: false }}
-        />
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
-}
-
-export default function App() {
+function App() {
   return (
     <SafeAreaProvider>
       <DrawerProvider>
-        <AppContent />
+        <NavigationContainer>
+          <Stack.Navigator 
+            initialRouteName="Splash"
+            screenOptions={{
+              headerShown: false,
+              // Keep screens mounted
+              lazy: false,
+            }}
+          >
+            <Stack.Screen
+              name="Splash"
+              component={SplashScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Login"
+              component={LoginScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Register"
+              component={RegisterScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="Drawer"
+              component={MainStackNavigator}
+              options={{ headerShown: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
       </DrawerProvider>
     </SafeAreaProvider>
   );
@@ -174,13 +174,13 @@ const styles = StyleSheet.create({
     width: DRAWER_WIDTH,
     backgroundColor: '#fff',
     height: '100%',
-    // Ensure it starts from the left edge
     left: 0,
     position: 'absolute',
   },
   overlayTouchable: {
     flex: 1,
-    // Takes remaining space after drawer
     marginLeft: DRAWER_WIDTH,
   },
 });
+
+export default App;

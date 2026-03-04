@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,7 @@ import {
   StatusBar,
   TextInput,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RazorpayCheckout from 'react-native-razorpay';
 import api from '../services/api';
@@ -24,48 +24,109 @@ const BuyCreditsScreen = () => {
   const { creditPackage, user } = route.params || {};
   const [loading, setLoading] = useState(false);
   const [customAmount, setCustomAmount] = useState('');
+  const [isAuthed, setIsAuthed] = useState(true);
+  const [errorMessage, setErrorMessage] = useState(null);
+
+  // Check auth status on focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const checkAuth = async () => {
+        try {
+          const token = await AsyncStorage.getItem('userToken');
+          const userData = await AsyncStorage.getItem('userData');
+          
+          if (!token || !userData) {
+            console.warn('BuyCreditsScreen: No auth token found');
+            setIsAuthed(false);
+            setErrorMessage('Your session has expired. Please log in again.');
+            return;
+          }
+          setIsAuthed(true);
+          setErrorMessage(null);
+        } catch (error) {
+          console.error('Auth check error:', error);
+        }
+      };
+      
+      checkAuth();
+    }, [navigation])
+  );
 
   const handlePurchase = async () => {
+    setErrorMessage(null);
+
+    if (!isAuthed) {
+      setErrorMessage('Your session has expired. Please log in again.');
+      return;
+    }
+
+    setLoading(true);
+    let sessionExtensionInterval = null;
+
     try {
-      setLoading(true);
+      // Extend session immediately
+      await AsyncStorage.setItem('lastActivityTime', Date.now().toString());
+
+      // Start periodic session extension during payment (every 30 seconds)
+      sessionExtensionInterval = setInterval(async () => {
+        try {
+          await AsyncStorage.setItem('lastActivityTime', Date.now().toString());
+        } catch (e) {
+          console.warn('Session extension error:', e);
+        }
+      }, 30000);
+
       const userData = await AsyncStorage.getItem('userData');
-      const currentUser = userData ? JSON.parse(userData) : null;
       const token = await AsyncStorage.getItem('userToken');
-      
+      const currentUser = userData ? JSON.parse(userData) : null;
+
+      if (!token || !userData) {
+        setErrorMessage('Your session has expired. Please log in again.');
+        setIsAuthed(false);
+        return;
+      }
+
       let packageId = creditPackage?.id;
       let amount = creditPackage?.price;
-      
-      // If custom amount
+
       if (!creditPackage && customAmount) {
         amount = parseFloat(customAmount);
         if (isNaN(amount) || amount < 10) {
-          Alert.alert('Error', 'Minimum amount should be ₹10');
-          setLoading(false);
+          setErrorMessage('Minimum amount should be ₹10');
           return;
         }
       }
-      
+
       if (!amount || amount <= 0) {
-        Alert.alert('Error', 'Please select a package or enter a valid amount');
-        setLoading(false);
+        setErrorMessage('Please select a package or enter a valid amount');
         return;
       }
 
-      // Create Razorpay order on server
-      const orderResponse = await api.createCreditOrder(packageId, amount, token);
-      
-      if (!orderResponse || !orderResponse.orderId) {
-        Alert.alert('Error', 'Failed to create payment order');
-        setLoading(false);
+      // Create order
+      let orderResponse;
+      try {
+        orderResponse = await api.createCreditOrder(packageId, amount, token);
+      } catch (apiError) {
+        if (apiError.status === 401) {
+          setErrorMessage('Session expired. Please log in again.');
+          setIsAuthed(false);
+          return;
+        }
+        setErrorMessage(apiError.message || 'Failed to create payment order');
         return;
       }
 
-      // Open Razorpay payment gateway
+      if (!orderResponse?.orderId) {
+        setErrorMessage('Failed to create payment order');
+        return;
+      }
+
+      // Open Razorpay
       const options = {
-        description: `Purchase ${creditPackage?.credits || customAmount} credits`,
+        description: `Buy ${creditPackage?.credits || customAmount} credits`,
         currency: 'INR',
-        key: orderResponse.razorpayKeyId, // Server should provide this
-        amount: Math.round(amount * 100), // Razorpay expects amount in paise
+        key: orderResponse.razorpayKeyId,
+        amount: Math.round(amount * 100),
         name: 'Fresh Grupo',
         prefill: {
           email: currentUser?.email || '',
@@ -75,35 +136,51 @@ const BuyCreditsScreen = () => {
         theme: { color: '#4CAF50' },
       };
 
+      const paymentData = await RazorpayCheckout.open(options);
+
+      // Verify payment
+      let verifyResponse;
       try {
-        const paymentData = await RazorpayCheckout.open(options);
-        
-        // Payment successful - verify with server
-        const verifyResponse = await api.verifyCreditPayment(
+        verifyResponse = await api.verifyCreditPayment(
           paymentData.razorpay_payment_id,
           orderResponse.orderId,
           orderResponse.transactionId,
           token
         );
-        
-        Alert.alert(
-          'Success!',
-          `🎉 ${verifyResponse.creditsAdded} credits have been added to your wallet!`,
-          [{ text: 'OK', onPress: () => navigation.goBack() }]
-        );
-      } catch (razorpayError) {
-        // User cancelled or payment failed
-        if (razorpayError.code === 'USER_CANCELLED') {
-          Alert.alert('Payment Cancelled', 'You can try again when ready.');
-        } else {
-          console.error('Razorpay error:', razorpayError);
-          Alert.alert('Payment Failed', 'Please try again or use a different payment method.');
+      } catch (verifyError) {
+        if (verifyError.status === 401) {
+          setErrorMessage('Session expired. Payment may have succeeded. Please log in.');
+          setIsAuthed(false);
+          return;
         }
+        setErrorMessage(verifyError.message || 'Payment verification failed');
+        return;
       }
+
+      if (!verifyResponse?.creditsAdded) {
+        setErrorMessage('Failed to verify payment');
+        return;
+      }
+
+      // Success
+      setLoading(false);
+      Alert.alert(
+        'Success!',
+        `🎉 ${verifyResponse.creditsAdded} credits added!`,
+        [{ text: 'OK', onPress: () => navigation.goBack() }]
+      );
     } catch (error) {
-      console.error('Error creating order:', error);
-      Alert.alert('Error', 'Failed to create payment order');
+      console.error('Payment error:', error);
+      if (error.code === 'USER_CANCELLED') {
+        setErrorMessage(null);
+        Alert.alert('Cancelled', 'Payment cancelled. Try again when ready.');
+      } else {
+        setErrorMessage(error.message || 'Payment error. Please try again.');
+      }
     } finally {
+      if (sessionExtensionInterval) {
+        clearInterval(sessionExtensionInterval);
+      }
       setLoading(false);
     }
   };
@@ -113,14 +190,46 @@ const BuyCreditsScreen = () => {
       <View style={styles.headerContainer}>
         <CustomHeader title="Buy Credits" />
       </View>
-      
-      <ImageBackground 
-        source={require('../../images/innerimage.png')} 
-        style={styles.background}
-        resizeMode="cover"
-        opacity={0.1}
-      >
-        <ScrollView style={styles.scrollContainer}>
+
+      {!isAuthed && (
+        <View style={styles.authErrorContainer}>
+          <View style={styles.errorBox}>
+            <Text style={styles.errorIcon}>🔒</Text>
+            <Text style={styles.errorTitle}>Session Expired</Text>
+            <Text style={styles.errorMessage}>
+              Your session has expired. Please log in again to continue.
+            </Text>
+            <TouchableOpacity
+              style={styles.reloginButton}
+              onPress={() => navigation.replace('Login')}
+            >
+              <Text style={styles.reloginButtonText}>Log In Again</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {errorMessage && isAuthed && (
+        <View style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>⚠️ {errorMessage}</Text>
+          <TouchableOpacity onPress={() => setErrorMessage(null)}>
+            <Text style={styles.errorBannerClose}>✕</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {isAuthed && (
+        <>
+          <ImageBackground
+            source={require('../../images/innerimage.png')}
+            style={styles.background}
+            resizeMode="cover"
+            opacity={0.1}
+          >
+            <ScrollView
+              style={styles.scrollContainer}
+              scrollEnabled={!loading}
+            >
           {/* Package Details */}
           {creditPackage && (
             <View style={styles.packageCard}>
@@ -254,8 +363,20 @@ const BuyCreditsScreen = () => {
           </TouchableOpacity>
 
           <View style={styles.bottomSpacer} />
-        </ScrollView>
-      </ImageBackground>
+            </ScrollView>
+          </ImageBackground>
+
+          {/* Loading Overlay */}
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="large" color="#4CAF50" />
+                <Text style={styles.loadingText}>Processing Payment...</Text>
+              </View>
+            </View>
+          )}
+        </>
+      )}
     </View>
   );
 };
@@ -269,12 +390,111 @@ const styles = StyleSheet.create({
     paddingTop: 50,
     backgroundColor: '#4CAF50',
   },
+  authErrorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  errorBox: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+  },
+  errorIcon: {
+    fontSize: 64,
+    marginBottom: 16,
+  },
+  errorTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  errorMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 20,
+  },
+  reloginButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 12,
+    paddingHorizontal: 32,
+    borderRadius: 8,
+    width: '100%',
+    alignItems: 'center',
+  },
+  reloginButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  errorBanner: {
+    backgroundColor: '#FFF3CD',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFE69C',
+    paddingTop: 10,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  errorBannerText: {
+    color: '#856404',
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  errorBannerClose: {
+    color: '#856404',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 12,
+  },
   background: {
     flex: 1,
   },
   scrollContainer: {
     flex: 1,
     padding: 16,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 100,
+  },
+  loadingBox: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
   packageCard: {
     backgroundColor: '#fff',
