@@ -23,7 +23,7 @@ import CustomDrawer from './src/components/CustomDrawer';
 import { DrawerProvider, useDrawer } from './src/context/DrawerContext';
 import {enableScreens} from 'react-native-screens';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
 
 enableScreens(true);
@@ -34,10 +34,12 @@ const Stack = createNativeStackNavigator();
 function DrawerModal() {
   const { isDrawerOpen, closeDrawer } = useDrawer();
   const navigation = useNavigation();
+  // Start from left (negative width means off-screen to the left)
   const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
 
   React.useEffect(() => {
     if (isDrawerOpen) {
+      // Slide in from left to position 0
       Animated.spring(slideAnim, {
         toValue: 0,
         useNativeDriver: true,
@@ -45,6 +47,7 @@ function DrawerModal() {
         friction: 11,
       }).start();
     } else {
+      // Slide out to the left
       Animated.timing(slideAnim, {
         toValue: -DRAWER_WIDTH,
         duration: 200,
@@ -73,11 +76,6 @@ function DrawerModal() {
       onRequestClose={closeDrawer}
     >
       <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.overlayTouchable} 
-          activeOpacity={1} 
-          onPress={closeDrawer}
-        />
         <Animated.View
           style={[
             styles.drawerContainer,
@@ -88,6 +86,11 @@ function DrawerModal() {
         >
           <CustomDrawer navigation={navigation} onClose={closeDrawer} />
         </Animated.View>
+        <TouchableOpacity 
+          style={styles.overlayTouchable} 
+          activeOpacity={1} 
+          onPress={closeDrawer}
+        />
       </View>
     </Modal>
   );
@@ -167,12 +170,17 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     flexDirection: 'row',
   },
-  overlayTouchable: {
-    flex: 1,
-  },
   drawerContainer: {
     width: DRAWER_WIDTH,
     backgroundColor: '#fff',
     height: '100%',
+    // Ensure it starts from the left edge
+    left: 0,
+    position: 'absolute',
+  },
+  overlayTouchable: {
+    flex: 1,
+    // Takes remaining space after drawer
+    marginLeft: DRAWER_WIDTH,
   },
 });
