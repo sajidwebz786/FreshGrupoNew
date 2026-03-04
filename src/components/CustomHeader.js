@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
+import { useDrawer } from '../context/DrawerContext';
 
 const CustomHeader = () => {
   const navigation = useNavigation();
   const route = useRoute();
+  const { openDrawer } = useDrawer();
   const [cartCount, setCartCount] = useState(0);
   const [user, setUser] = useState(null);
 
@@ -14,13 +16,11 @@ const CustomHeader = () => {
     getCurrentUser();
     getCartCount();
 
-    // Listen for focus events
     const unsubscribeFocus = navigation.addListener('focus', () => {
       console.log('Header focused, refreshing cart count');
       getCartCount();
     });
 
-    // Also listen for navigation state changes
     const unsubscribeState = navigation.addListener('state', () => {
       console.log('Navigation state changed, refreshing cart count');
       getCartCount();
@@ -38,24 +38,20 @@ const CustomHeader = () => {
       if (userData) {
         setUser(JSON.parse(userData));
       } else {
-        // For demo purposes
         setUser({ id: 1, name: 'Demo User' });
       }
     } catch (error) {
       console.error('Error getting user:', error);
-      // For demo purposes
       setUser({ id: 1, name: 'Demo User' });
     }
   };
 
   const getCartCount = async () => {
     try {
-      // Get current user data
       const userData = await AsyncStorage.getItem('userData');
       const userToken = await AsyncStorage.getItem('userToken');
       const currentUser = userData ? JSON.parse(userData) : null;
 
-      // Validate user.id exists and is valid
       if (!currentUser || !currentUser.id || isNaN(currentUser.id)) {
         console.log('Invalid user for cart count');
         setCartCount(0);
@@ -64,7 +60,6 @@ const CustomHeader = () => {
 
       console.log('Getting cart count for user:', currentUser.id);
       
-      // Use the API service to get cart items
       const cartItems = await api.getCart(currentUser.id, userToken);
       
       if (cartItems && Array.isArray(cartItems)) {
@@ -76,7 +71,6 @@ const CustomHeader = () => {
       }
     } catch (error) {
       console.log('Error getting cart count:', error.message);
-      // Don't show alert - just set to 0 silently
       setCartCount(0);
     }
   };
@@ -86,10 +80,9 @@ const CustomHeader = () => {
   };
 
   const handleDrawerPress = () => {
-    navigation.openDrawer();
+    openDrawer();
   };
 
-  // Don't show header on auth screens
   if (route.name === 'Login' || route.name === 'Register' || route.name === 'Splash') {
     return null;
   }

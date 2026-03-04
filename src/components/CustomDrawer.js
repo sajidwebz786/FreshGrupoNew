@@ -5,19 +5,13 @@ import {
   StyleSheet,
   TouchableOpacity,
   Alert,
-  Image,
-  ScrollView
+  ScrollView,
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
-import {
-  DrawerContentScrollView,
-  DrawerItemList,
-} from '@react-navigation/drawer';
-import { DrawerActions } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from '../services/api';
 
-const CustomDrawer = (props) => {
+const CustomDrawer = ({ navigation, onClose }) => {
   const [user, setUser] = useState(null);
   const [cartCount, setCartCount] = useState(0);
 
@@ -77,7 +71,10 @@ const CustomDrawer = (props) => {
             try {
               await AsyncStorage.removeItem('userToken');
               await AsyncStorage.removeItem('userData');
-              props.navigation.navigate('Login');
+              if (onClose) {
+                onClose();
+              }
+              navigation.navigate('Login');
             } catch (error) {
               console.error('Error during logout:', error);
               Alert.alert('Error', 'Failed to logout');
@@ -88,12 +85,25 @@ const CustomDrawer = (props) => {
     );
   };
 
+  const navigateTo = (screen) => {
+    if (onClose) {
+      onClose();
+    }
+    // Use setTimeout to ensure modal closes before navigation
+    setTimeout(() => {
+      navigation.navigate(screen);
+    }, 50);
+  };
+
   return (
     <View style={styles.container}>
-      <DrawerContentScrollView {...props} style={styles.drawerContent}>
+      <ScrollView style={styles.drawerContent}>
         {/* Header Section with User Info */}
         <View style={styles.header}>
-          <TouchableOpacity style={styles.closeButton} onPress={() => props.navigation.dispatch(DrawerActions.closeDrawer())}>
+          <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={onClose}
+          >
             <Ionicons name="close" size={24} color="#d32f2f" />
           </TouchableOpacity>
           <View style={styles.userInfo}>
@@ -125,17 +135,16 @@ const CustomDrawer = (props) => {
         {/* Menu Items */}
         <View style={styles.menuContainer}>
           <TouchableOpacity
-            style={[styles.menuItem, props.state.index === 0 && styles.activeMenuItem]}
-            onPress={() => props.navigation.navigate('MainStack')}
+            style={styles.menuItem}
+            onPress={() => navigateTo('MainStack')}
           >
             <Text style={styles.menuIcon}>🏠</Text>
             <Text style={styles.menuText}>Home</Text>
           </TouchableOpacity>
 
-
           <TouchableOpacity
-            style={[styles.menuItem, props.state.index === 4 && styles.activeMenuItem]}
-            onPress={() => props.navigation.navigate('Address')}
+            style={styles.menuItem}
+            onPress={() => navigateTo('Address')}
           >
             <Text style={styles.menuIcon}>📍</Text>
             <Text style={styles.menuText}>Address</Text>
@@ -143,7 +152,7 @@ const CustomDrawer = (props) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => props.navigation.navigate('OrderHistory')}
+            onPress={() => navigateTo('OrderHistory')}
           >
             <Text style={styles.menuIcon}>📋</Text>
             <Text style={styles.menuText}>Order History</Text>
@@ -151,7 +160,7 @@ const CustomDrawer = (props) => {
 
           <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => props.navigation.navigate('Profile')}
+            onPress={() => navigateTo('Profile')}
           >
             <Text style={styles.menuIcon}>👤</Text>
             <Text style={styles.menuText}>My Profile</Text>
@@ -175,7 +184,7 @@ const CustomDrawer = (props) => {
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
         </View>
-      </DrawerContentScrollView>
+      </ScrollView>
     </View>
   );
 };
@@ -271,11 +280,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: '#f8f8f8',
     position: 'relative',
-  },
-  activeMenuItem: {
-    backgroundColor: '#e8f5e8',
-    borderLeftWidth: 4,
-    borderLeftColor: '#4CAF50',
   },
   menuIcon: {
     fontSize: 20,

@@ -1,8 +1,8 @@
 import React from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigation } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createDrawerNavigator } from '@react-navigation/drawer';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Modal, View, TouchableOpacity, StyleSheet, Animated, Dimensions, BackHandler } from 'react-native';
 import SplashScreen from './src/screens/SplashScreen';
 import CategoriesScreen from './src/screens/CategoriesScreen';
 import PackTypesScreen from './src/screens/PackTypesScreen';
@@ -20,142 +20,159 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import WalletScreen from './src/screens/WalletScreen';
 import BuyCreditsScreen from './src/screens/BuyCreditsScreen';
 import CustomDrawer from './src/components/CustomDrawer';
+import { DrawerProvider, useDrawer } from './src/context/DrawerContext';
 import {enableScreens} from 'react-native-screens';
 
-enableScreens(true); // disable if causing issues
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const DRAWER_WIDTH = SCREEN_WIDTH * 0.75;
+
+enableScreens(true);
 
 const Stack = createNativeStackNavigator();
-const Drawer = createDrawerNavigator();
 
-// Stack navigator for main app flow
-function MainStackNavigator() {
+// Custom Drawer Modal Component
+function DrawerModal() {
+  const { isDrawerOpen, closeDrawer } = useDrawer();
+  const navigation = useNavigation();
+  const slideAnim = React.useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+
+  React.useEffect(() => {
+    if (isDrawerOpen) {
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        useNativeDriver: true,
+        tension: 65,
+        friction: 11,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: -DRAWER_WIDTH,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [isDrawerOpen, slideAnim]);
+
+  React.useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (isDrawerOpen) {
+        closeDrawer();
+        return true;
+      }
+      return false;
+    });
+
+    return () => backHandler.remove();
+  }, [isDrawerOpen, closeDrawer]);
+
   return (
-    <Stack.Navigator
-      initialRouteName="Categories"
-      screenOptions={{
-        headerShown: false, // We'll use CustomHeader in screens
-      }}
+    <Modal
+      visible={isDrawerOpen}
+      transparent
+      animationType="none"
+      onRequestClose={closeDrawer}
     >
-      <Stack.Screen name="Categories" component={CategoriesScreen} />
-      <Stack.Screen name="PackTypes" component={PackTypesScreen} />
-      <Stack.Screen name="PackContents" component={PackContentsScreen} />
-      <Stack.Screen name="CustomPack" component={CustomPackScreen} />
-    </Stack.Navigator>
+      <View style={styles.overlay}>
+        <TouchableOpacity 
+          style={styles.overlayTouchable} 
+          activeOpacity={1} 
+          onPress={closeDrawer}
+        />
+        <Animated.View
+          style={[
+            styles.drawerContainer,
+            {
+              transform: [{ translateX: slideAnim }],
+            },
+          ]}
+        >
+          <CustomDrawer navigation={navigation} onClose={closeDrawer} />
+        </Animated.View>
+      </View>
+    </Modal>
   );
 }
 
-// Drawer navigator for main app
-function DrawerNavigator() {
+// Main Stack Navigator that contains the drawer
+function MainStackNavigator() {
   return (
-    <Drawer.Navigator
-      initialRouteName="MainStack"
-      drawerContent={(props) => <CustomDrawer {...props} />}
-      screenOptions={{
-        headerShown: false, // Hide default header since we use CustomHeader
-        drawerStyle: {
-          backgroundColor: '#fff',
-          width: 280,
-        },
-        drawerType: 'front', // This ensures drawer slides from front
-        swipeEnabled: false, // Disable swipe gesture to avoid conflicts
-        gestureEnabled: false, // Disable default drawer gesture
-      }}
-    >
-      <Drawer.Screen
-        name="MainStack"
-        component={MainStackNavigator}
-        options={{
-          title: 'Fresh Groupo',
-          headerLeft: () => null, // We'll add custom header in screen component
+    <>
+      <Stack.Navigator
+        initialRouteName="Categories"
+        screenOptions={{
+          headerShown: false,
         }}
-      />
-      <Drawer.Screen
-        name="Cart"
-        component={CartScreen}
-        options={{
-          title: 'Shopping Cart',
-        }}
-      />
-      <Drawer.Screen
-        name="Address"
-        component={AddressScreen}
-        options={{
-          title: 'Delivery Address',
-        }}
-      />
-      <Drawer.Screen
-        name="Payment"
-        component={PaymentScreen}
-        options={{
-          title: 'Payment',
-        }}
-      />
-      <Drawer.Screen
-        name="OrderHistory"
-        component={OrderHistoryScreen}
-        options={{
-          title: 'Order History',
-        }}
-      />
-      <Drawer.Screen
-        name="OrderDetails"
-        component={OrderDetailsScreen}
-        options={{
-          title: 'Order Details',
-        }}
-      />
-      <Drawer.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{
-          title: 'My Profile',
-        }}
-      />
-      <Drawer.Screen
-        name="Wallet"
-        component={WalletScreen}
-        options={{
-          title: 'My Wallet',
-        }}
-      />
-      <Drawer.Screen
-        name="BuyCredits"
-        component={BuyCreditsScreen}
-        options={{
-          title: 'Buy Credits',
-        }}
-      />
-    </Drawer.Navigator>
+      >
+        <Stack.Screen name="Categories" component={CategoriesScreen} />
+        <Stack.Screen name="PackTypes" component={PackTypesScreen} />
+        <Stack.Screen name="PackContents" component={PackContentsScreen} />
+        <Stack.Screen name="CustomPack" component={CustomPackScreen} />
+        <Stack.Screen name="Cart" component={CartScreen} />
+        <Stack.Screen name="Address" component={AddressScreen} />
+        <Stack.Screen name="Payment" component={PaymentScreen} />
+        <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
+        <Stack.Screen name="OrderDetails" component={OrderDetailsScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="Wallet" component={WalletScreen} />
+        <Stack.Screen name="BuyCredits" component={BuyCreditsScreen} />
+      </Stack.Navigator>
+      
+      <DrawerModal />
+    </>
+  );
+}
+
+function AppContent() {
+  return (
+    <NavigationContainer>
+      <Stack.Navigator initialRouteName="Splash">
+        <Stack.Screen
+          name="Splash"
+          component={SplashScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Login"
+          component={LoginScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Register"
+          component={RegisterScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Drawer"
+          component={MainStackNavigator}
+          options={{ headerShown: false }}
+        />
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
 export default function App() {
   return (
     <SafeAreaProvider>
-      <NavigationContainer>
-        <Stack.Navigator initialRouteName="Splash">
-          <Stack.Screen
-            name="Splash"
-            component={SplashScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{ headerShown: false }}
-          />
-          <Stack.Screen
-            name="Drawer"
-            component={DrawerNavigator}
-            options={{ headerShown: false }}
-          />
-        </Stack.Navigator>
-      </NavigationContainer>
+      <DrawerProvider>
+        <AppContent />
+      </DrawerProvider>
     </SafeAreaProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    flexDirection: 'row',
+  },
+  overlayTouchable: {
+    flex: 1,
+  },
+  drawerContainer: {
+    width: DRAWER_WIDTH,
+    backgroundColor: '#fff',
+    height: '100%',
+  },
+});
