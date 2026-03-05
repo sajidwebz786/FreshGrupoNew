@@ -153,7 +153,7 @@ const WalletScreen = () => {
   if (loading) {
     return (
       <ImageBackground
-        source={require('../../images/clean_app_bg.png')}
+        source={require('../../assets/images/clean_app_bg.png')}
         style={styles.background}
         resizeMode="cover"
       >
@@ -173,7 +173,7 @@ const WalletScreen = () => {
       </View>
       
       <ImageBackground 
-        source={require('../../images/innerimage.png')} 
+        source={require('../../assets/images/innerimage.png')} 
         style={styles.background}
         resizeMode="cover"
         opacity={0.1}

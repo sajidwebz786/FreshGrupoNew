@@ -61,35 +61,35 @@ const CategoriesScreen = () => {
   const getCategoryImage = (name, index) => {
     // Map category names to appropriate images with transparent backgrounds
     const imageMap = {
-      'Fruits Pack': require('../../images/fruits-pack-icon-removebg.png'),
-      'Vegetables Pack': require('../../images/vegetables-pack-icon-removebg.png'),
-      'Grocery Pack': require('../../images/grocery-pack-removebg.png'),
-      'Juices Pack': require('../../images/juices-pack-removebg.png'),
-      'Millets Pack': require('../../images/millet-pack-removebg.png'),
-      'Raw Powder Pack': require('../../images/spices-pack-removebg.png'),
-      'Nutrition Pack': require('../../images/nutrition-pack-removebg.png'),
-      'Dry Fruit Pack': require('../../images/dryfruits-pack-removebg.png'),
-      'Festival Pack': require('../../images/festival-pack-removebg.png'),
-      'Flower Pack': require('../../images/flower-pack-removebg.png'),
-      'Sprouts Pack': require('../../images/Beansprouts-removebg.png'),
+      'Fruits Pack': require('../../assets/images/fruits-pack-icon-removebg.png'),
+      'Vegetables Pack': require('../../assets/images/vegetables-pack-icon-removebg.png'),
+      'Grocery Pack': require('../../assets/images/grocery-pack-removebg.png'),
+      'Juices Pack': require('../../assets/images/juices-pack-removebg.png'),
+      'Millets Pack': require('../../assets/images/millet-pack-removebg.png'),
+      'Raw Powder Pack': require('../../assets/images/spices-pack-removebg.png'),
+      'Nutrition Pack': require('../../assets/images/nutrition-pack-removebg.png'),
+      'Dry Fruit Pack': require('../../assets/images/dryfruits-pack-removebg.png'),
+      'Festival Pack': require('../../assets/images/festival-pack-removebg.png'),
+      'Flower Pack': require('../../assets/images/flower-pack-removebg.png'),
+      'Sprouts Pack': require('../../assets/images/Beansprouts-removebg.png'),
     };
 
     // Static mapping for fallback images (React Native requires static requires)
     const staticImages = {
-      1: require('../../images/1.jpeg'),
-      2: require('../../images/2.jpeg'),
-      3: require('../../images/3.jpeg'),
-      4: require('../../images/4.jpeg'),
-      5: require('../../images/5.jpeg'),
-      6: require('../../images/6.jpeg'),
-      7: require('../../images/7.jpeg'),
-      8: require('../../images/8.jpeg'),
-      9: require('../../images/9.jpeg'),
-      10: require('../../images/10.jpeg'),
-      11: require('../../images/11.jpeg'),
-      12: require('../../images/12.jpeg'),
-      13: require('../../images/13.jpeg'),
-      14: require('../../images/14.jpeg'),
+      1: require('../../assets/images/1.jpeg'),
+      2: require('../../assets/images/2.jpeg'),
+      3: require('../../assets/images/3.jpeg'),
+      4: require('../../assets/images/4.jpeg'),
+      5: require('../../assets/images/5.jpeg'),
+      6: require('../../assets/images/6.jpeg'),
+      7: require('../../assets/images/7.jpeg'),
+      8: require('../../assets/images/8.jpeg'),
+      9: require('../../assets/images/9.jpeg'),
+      10: require('../../assets/images/10.jpeg'),
+      11: require('../../assets/images/11.jpeg'),
+      12: require('../../assets/images/12.jpeg'),
+      13: require('../../assets/images/13.jpeg'),
+      14: require('../../assets/images/14.jpeg'),
     };
 
     // If name matches, return specific image, otherwise use index-based fallback
@@ -153,21 +153,21 @@ const CategoriesScreen = () => {
     {
       id: 1,
       category: 'Vegetables',
-      image: require('../../images/vegetables_pack.jpg'),
+      image: require('../../assets/images/vegetables_pack.jpg'),
       discount: '20% OFF on',
       title: 'Fresh Vegetables - Launch Offer'
     },
     {
       id: 2,
       category: 'Fruits',
-      image: require('../../images/fruits_pack.jpg'),
+      image: require('../../assets/images/fruits_pack.jpg'),
       discount: '20% OFF on',
       title: 'Juicy Fruits - Launch Offer'
     },
     {
       id: 3,
       category: 'Groceries',
-      image: require('../../images/grocery_pack.jpg'),
+      image: require('../../assets/images/grocery_pack.jpg'),
       discount: '20% OFF on',
       title: 'Essential Groceries - Launch Offer'
     },
@@ -191,7 +191,7 @@ const CategoriesScreen = () => {
         <CustomHeader />
       </View>
       <ImageBackground
-        source={require('../../images/innerimage.png')} // Light leafy plants background
+        source={require('../../assets/images/innerimage.png')} // Light leafy plants background
         style={styles.background}
         resizeMode="cover"
         opacity={0.1}
@@ -255,7 +255,7 @@ const CategoriesScreen = () => {
           </View>
           <View style={styles.sloganContainer}>
             <Text style={styles.sloganText}>Freshness Delivered to Your Doorstep!</Text>            
-            <Image source={require('../../images/logo.png')} style={styles.logoImage} />
+            <Image source={require('../../assets/images/logo.png')} style={styles.logoImage} />
           </View>
         </View>
       </ImageBackground>

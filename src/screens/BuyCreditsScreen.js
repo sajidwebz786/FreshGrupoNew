@@ -221,7 +221,7 @@ const BuyCreditsScreen = () => {
       {isAuthed && (
         <>
           <ImageBackground
-            source={require('../../images/innerimage.png')}
+            source={require('../../assets/images/innerimage.png')}
             style={styles.background}
             resizeMode="cover"
             opacity={0.1}

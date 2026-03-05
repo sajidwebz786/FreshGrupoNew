@@ -124,7 +124,7 @@ const FestivalWishesScreen = () => {
 
   return (
     <ImageBackground
-      source={require('../../images/innerimage.png')} // Use existing background image
+      source={require('../../assets/images/innerimage.png')} // Use existing background image
       style={styles.container}
       resizeMode="cover"
     >

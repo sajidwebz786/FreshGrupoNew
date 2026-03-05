@@ -370,11 +370,11 @@ const LoginScreen = () => {
   const dotsOpacity = useRef(new Animated.Value(0)).current;
 
   const images = [
-    require('../images/12.jpeg'),
-    require('../images/13.jpeg'),
-    require('../images/14.jpeg'),
-    require('../images/15.jpeg'),
-    require('../images/16.jpeg'),
+    require('../../assets/images/12.jpeg'),
+    require('../../assets/images/13.jpeg'),
+    require('../../assets/images/14.jpeg'),
+    require('../../assets/images/15.jpeg'),
+    require('../../assets/images/16.jpeg'),
   ];
 
   const imageTitles = [
@@ -482,7 +482,7 @@ const LoginScreen = () => {
     <View style={styles.background}>
       <View style={styles.container}>
         <Image
-          source={require('../images/logo.png')}
+          source={require('../../assets/images/logo.png')}
           style={styles.logo}
           resizeMode="contain"
         />

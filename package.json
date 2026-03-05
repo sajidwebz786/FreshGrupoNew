@@ -18,7 +18,7 @@
     "@react-navigation/native-stack": "^7.14.2",
     "getenv": "^2.0.0",
     "react": "19.2.3",
-    "react-native": "0.84.0",
+    "react-native": "^0.84.0",
     "react-native-config": "^1.6.1",
     "react-native-gesture-handler": "^2.30.0",
     "react-native-linear-gradient": "^2.8.3",
@@ -50,6 +50,6 @@
     "typescript": "^5.8.3"
   },
   "engines": {
-    "node": ">= 22.11.0"
+    "node": ">= 20.19.4"
   }
 }

@@ -42,11 +42,11 @@ const PackTypesScreen = () => {
   ]).current;
 
   const packOffers = [
-    { id: 1, category: 'Weekly Pack', image: require('../../images/12.jpeg'), discount: '15% OFF on', title: 'Weekly Pack Special Offer' },
-    { id: 2, category: 'Bi-Weekly Pack', image: require('../../images/13.jpeg'), discount: '20% OFF on', title: 'Bi-Weekly Pack Launch Offer' },
-    { id: 3, category: 'Monthly Pack', image: require('../../images/14.jpeg'), discount: '25% OFF on', title: 'Monthly Pack Mega Offer' },
-    { id: 4, category: 'Premium Pack', image: require('../../images/15.jpeg'), discount: '30% OFF on', title: 'Premium Pack Exclusive Deal' },
-    { id: 5, category: 'Seasonal Pack', image: require('../../images/16.jpeg'), discount: '35% OFF on', title: 'Seasonal Pack Limited Time' },
+    { id: 1, category: 'Weekly Pack', image: require('../../assets/images/12.jpeg'), discount: '15% OFF on', title: 'Weekly Pack Special Offer' },
+    { id: 2, category: 'Bi-Weekly Pack', image: require('../../assets/images/13.jpeg'), discount: '20% OFF on', title: 'Bi-Weekly Pack Launch Offer' },
+    { id: 3, category: 'Monthly Pack', image: require('../../assets/images/14.jpeg'), discount: '25% OFF on', title: 'Monthly Pack Mega Offer' },
+    { id: 4, category: 'Premium Pack', image: require('../../assets/images/15.jpeg'), discount: '30% OFF on', title: 'Premium Pack Exclusive Deal' },
+    { id: 5, category: 'Seasonal Pack', image: require('../../assets/images/16.jpeg'), discount: '35% OFF on', title: 'Seasonal Pack Limited Time' },
   ];
 
   useEffect(() => {
@@ -134,7 +134,7 @@ const PackTypesScreen = () => {
   if (loading) {
     return (
       <ImageBackground
-        source={require('../../images/clean_app_bg.png')}
+        source={require('../../assets/images/clean_app_bg.png')}
         style={styles.background}
         resizeMode="cover"
       >
@@ -312,7 +312,7 @@ const PackTypesScreen = () => {
       <View style={styles.headerContainer}>
         <CustomHeader />
       </View>
-      <ImageBackground source={require('../../images/innerimage.png')} style={styles.background} resizeMode="cover" opacity={0.1}>
+      <ImageBackground source={require('../../assets/images/innerimage.png')} style={styles.background} resizeMode="cover" opacity={0.1}>
         <View style={styles.scrollContainer}>
           {/* Farmer with Bulls - Full Width Hero Image */}
           <View style={styles.animationContainer}>
@@ -392,7 +392,7 @@ const PackTypesScreen = () => {
 
           {/* Logo at Top - Under Header */}
           <View style={styles.topLogoContainer}>
-            <Image source={require('../../images/logo.png')} style={styles.topLogo} />
+            <Image source={require('../../assets/images/logo.png')} style={styles.topLogo} />
           </View>
 
           {/* Branded Title Section - Text Background Only */}

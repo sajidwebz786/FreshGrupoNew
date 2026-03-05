@@ -48,7 +48,7 @@ const SplashScreen = () => {
       end={{ x: 1, y: 1 }}
     >
       <Animated.Image
-        source={require('../../images/logo.png')}
+        source={require('../../assets/images/logo.png')}
         style={[
           styles.logo,
           {

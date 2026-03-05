@@ -104,14 +104,14 @@ const RegisterScreen = () => {
 
   return (
     <ImageBackground
-      source={require('../../images/clean_app_bg.png')} // Very clean white background
+      source={require('../../assets/images/clean_app_bg.png')} // Very clean white background
       style={styles.background}
       resizeMode="cover"
     >
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.container}>
           <Image
-            source={require('../../images/logo.png')}
+            source={require('../../assets/images/logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />
